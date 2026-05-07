@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Sprout, ArrowLeft, FileText, MapPin, Camera, Upload, X,
-  Search, CheckCircle2, ShieldCheck, Satellite,
+  Search, CheckCircle2, ShieldCheck, Satellite, Loader2,
 } from "lucide-react";
+import { fazendaOkApi } from "@/lib/api";
 
 const Analise = () => {
   const { toast } = useToast();
@@ -30,6 +31,10 @@ const Analise = () => {
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [notes, setNotes] = useState("");
 
+  // Status de Processamento
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progressMsg, setProgressMsg] = useState("");
+
   const handlePhotos = (files: FileList | null) => {
     if (!files) return;
     const accepted = Array.from(files)
@@ -46,25 +51,100 @@ const Analise = () => {
     });
   };
 
-  const submit = (e: React.FormEvent) => {
+  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (tab === "car" && car.trim().length < 10) {
       toast({ title: "CAR inválido", description: "Informe o número completo do CAR.", variant: "destructive" });
       return;
     }
-    if (tab === "maps" && !mapsUrl.trim() && !coords.trim() && !address.trim()) {
-      toast({ title: "Informe a localização", description: "Cole o link do Google Maps, coordenadas ou endereço.", variant: "destructive" });
-      return;
+    
+    let lat = 0;
+    let lng = 0;
+
+    if (tab === "maps") {
+      if (!coords.trim()) {
+        toast({ title: "Coordenadas ausentes", description: "Informe as coordenadas para realizar a busca espacial.", variant: "destructive" });
+        return;
+      }
+      try {
+        const parts = coords.split(',').map(s => s.trim());
+        lat = parseFloat(parts[0]);
+        lng = parseFloat(parts[1]);
+        if (isNaN(lat) || isNaN(lng)) throw new Error("Coordenadas inválidas");
+      } catch (err) {
+        toast({ title: "Coordenadas inválidas", description: "O formato deve ser: Latitude, Longitude", variant: "destructive" });
+        return;
+      }
     }
-    if (tab === "fotos" && photos.length === 0) {
-      toast({ title: "Adicione fotos", description: "Envie pelo menos uma foto da propriedade.", variant: "destructive" });
-      return;
+
+    try {
+      setIsProcessing(true);
+      setProgressMsg("Localizando propriedade...");
+
+      let propriedade;
+      if (tab === "car") {
+        propriedade = await fazendaOkApi.buscarPropriedadePorCar(car.trim());
+      } else {
+        propriedade = await fazendaOkApi.buscarPropriedadePorCoordenadas(lat, lng);
+      }
+
+      setProgressMsg("Iniciando análise com dados do satélite...");
+      const taskInit = await fazendaOkApi.gerarDiagnostico(propriedade.id);
+      
+      let diagnosticId = null;
+      
+      // Polling
+      for (let i = 0; i < 30; i++) { // Max ~60 seconds
+        await delay(2000);
+        setProgressMsg(`Analisando sobreposições ambientais... (${i*2}s)`);
+        const status = await fazendaOkApi.consultarStatusTarefa(taskInit.tarefa_id);
+        
+        if (status.status === "SUCCESS") {
+          diagnosticId = status.resultado_id;
+          break;
+        } else if (status.status === "FAILURE") {
+          throw new Error("Falha no processamento do diagnóstico: " + status.erro);
+        }
+      }
+
+      if (!diagnosticId) {
+        throw new Error("Tempo limite excedido aguardando o diagnóstico.");
+      }
+
+      // Upload de fotos
+      if (photos.length > 0) {
+        setProgressMsg("Enviando fotos e evidências...");
+        const formData = new FormData();
+        photos.forEach((p) => formData.append("fotos", p.file));
+        formData.append("car_numero", propriedade.numero_car);
+        formData.append("diagnostico_id", diagnosticId);
+        
+        try {
+          await fazendaOkApi.uploadFotos(formData);
+        } catch (err) {
+          console.error("Erro no upload de fotos:", err);
+          toast({ title: "Aviso", description: "Diagnóstico gerado, mas houve erro ao enviar algumas fotos.", variant: "default" });
+        }
+      }
+
+      setProgressMsg("Diagnóstico concluído!");
+      toast({
+        title: "Análise finalizada!",
+        description: "Redirecionando para o resultado...",
+      });
+      
+      setTimeout(() => navigate(`/resultado/${diagnosticId}`), 1000);
+
+    } catch (error: unknown) {
+      console.error(error);
+      const err = error as { response?: { data?: { detail?: string } }, message?: string };
+      const msg = err.response?.data?.detail || err.message || "Ocorreu um erro ao processar sua solicitação.";
+      toast({ title: "Erro na análise", description: msg, variant: "destructive" });
+      setIsProcessing(false);
     }
-    toast({
-      title: "Análise iniciada!",
-      description: "Recebemos seus dados. Em breve você receberá o diagnóstico por e-mail.",
-    });
-    setTimeout(() => navigate("/"), 1500);
   };
 
   return (
@@ -83,8 +163,19 @@ const Analise = () => {
         </div>
       </header>
 
-      <main className="container py-10 md:py-16">
-        <div className="max-w-3xl mx-auto">
+      <main className="container py-10 md:py-16 relative">
+        {/* LOADING OVERLAY */}
+        {isProcessing && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-xl">
+            <div className="flex flex-col items-center bg-card p-8 rounded-2xl shadow-xl border">
+              <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+              <h3 className="font-display font-bold text-xl">Processando...</h3>
+              <p className="text-muted-foreground mt-2">{progressMsg}</p>
+            </div>
+          </div>
+        )}
+
+        <div className={`max-w-3xl mx-auto ${isProcessing ? 'pointer-events-none blur-sm' : ''}`}>
           <Badge variant="secondary" className="rounded-full mb-4">Passo 1 de 2 — Localizar fazenda</Badge>
           <h1 className="font-display text-3xl md:text-4xl font-extrabold leading-tight">
             Vamos encontrar sua propriedade
@@ -117,47 +208,17 @@ const Analise = () => {
                       value={car}
                       onChange={(e) => setCar(e.target.value)}
                       placeholder="Ex: SP-3550308-A1B2C3D4E5F6..."
-                      className="mt-2 h-12 rounded-lg"
+                      className="mt-2 h-12 rounded-lg font-mono"
                       maxLength={60}
                     />
                     <p className="mt-2 text-sm text-muted-foreground">
                       Você encontra o número do CAR no recibo de inscrição. É a forma mais rápida e precisa.
                     </p>
                   </div>
-                  <div className="rounded-lg bg-secondary/60 p-4 text-sm text-secondary-foreground">
-                    Não tem o número em mãos? Use a aba <strong>Mapa</strong> ou <strong>Fotos</strong>.
-                  </div>
                 </TabsContent>
 
                 {/* MAPS */}
                 <TabsContent value="maps" className="mt-6 space-y-5">
-                  <div>
-                    <Label htmlFor="maps">Link do Google Maps</Label>
-                    <div className="mt-2 flex gap-2">
-                      <Input
-                        id="maps"
-                        value={mapsUrl}
-                        onChange={(e) => setMapsUrl(e.target.value)}
-                        placeholder="https://maps.google.com/..."
-                        className="h-12 rounded-lg"
-                        maxLength={500}
-                      />
-                      <a
-                        href="https://www.google.com/maps"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0"
-                      >
-                        <Button type="button" variant="outline" className="h-12 rounded-lg">
-                          <Search className="h-4 w-4 mr-2" /> Abrir
-                        </Button>
-                      </a>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Abra o Google Maps, encontre sua fazenda, clique com o botão direito e copie o link.
-                    </p>
-                  </div>
-
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="coords">Coordenadas (lat, long)</Label>
@@ -166,19 +227,8 @@ const Analise = () => {
                         value={coords}
                         onChange={(e) => setCoords(e.target.value)}
                         placeholder="-15.7942, -47.8822"
-                        className="mt-2 h-12 rounded-lg"
+                        className="mt-2 h-12 rounded-lg font-mono"
                         maxLength={50}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="address">Endereço da propriedade</Label>
-                      <Input
-                        id="address"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Município, estado, ponto de referência"
-                        className="mt-2 h-12 rounded-lg"
-                        maxLength={200}
                       />
                     </div>
                   </div>
@@ -186,6 +236,9 @@ const Analise = () => {
 
                 {/* FOTOS */}
                 <TabsContent value="fotos" className="mt-6 space-y-5">
+                  <div className="rounded-lg bg-warning/10 border border-warning/20 p-4 text-sm text-warning-foreground mb-4">
+                    <strong>Importante:</strong> Para usar apenas fotos, certifique-se de que a localização (GPS) esteja ativada na câmera do seu celular no momento da foto.
+                  </div>
                   <div>
                     <Label>Fotos da fazenda</Label>
                     <label className="mt-2 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-secondary/30 p-8 cursor-pointer hover:border-primary/50 transition">
@@ -226,18 +279,6 @@ const Analise = () => {
                       ))}
                     </div>
                   )}
-
-                  <div>
-                    <Label htmlFor="notes">Observações (opcional)</Label>
-                    <Textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Pontos de referência, divisas, áreas de mata, açudes…"
-                      className="mt-2 rounded-lg"
-                      maxLength={1000}
-                    />
-                  </div>
                 </TabsContent>
               </Tabs>
 
@@ -269,7 +310,7 @@ const Analise = () => {
             </div>
             <div className="flex items-start gap-2 text-muted-foreground">
               <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-              Diagnóstico em até 48 horas.
+              Diagnóstico imediato (PRODES/DETER).
             </div>
           </div>
         </div>

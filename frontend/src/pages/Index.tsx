@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import {
   AlertTriangle, CheckCircle2, XCircle, Satellite, Sprout, ShieldCheck,
@@ -43,15 +43,20 @@ const Index = () => {
       {/* Nav */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="container flex items-center justify-between py-5">
-          <a href="#" className="flex items-center gap-2 font-display font-extrabold text-primary-foreground">
+          <Link to="/" className="flex items-center gap-2 font-display font-extrabold text-primary-foreground">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary-foreground/15 backdrop-blur">
               <Sprout className="h-5 w-5" />
             </span>
             <span className="text-lg tracking-tight">FazendaOK</span>
-          </a>
-          <a href="#cta">
-            <Button variant="secondary" className="rounded-full">Analisar agora</Button>
-          </a>
+          </Link>
+          <div className="flex gap-4">
+            <Link to="/dashboard">
+              <Button variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">Meu Histórico</Button>
+            </Link>
+            <a href="#cta">
+              <Button variant="secondary" className="rounded-full">Analisar agora</Button>
+            </a>
+          </div>
         </div>
       </header>
 

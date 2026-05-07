@@ -1,0 +1,243 @@
+# ============================================================================
+# FAZENDAOK PLATFORM - CONFIGURAÇÃO DO PROJETO PYTHON
+# ============================================================================
+#
+# Este arquivo define as configurações do projeto Python usando o formato
+# pyproject.toml (PEP 518). Ele especifica metadados do projeto, dependências
+# e configurações de ferramentas de desenvolvimento.
+#
+# Requisitos atendidos: Task 1 - Backend project structure and core configuration
+# ============================================================================
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fazendaok-platform"
+version = "0.1.0"
+description = "Plataforma de diagnóstico de conformidade socioambiental para propriedades rurais brasileiras"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "FazendaOk Team"}
+]
+keywords = [
+    "fazenda",
+    "car",
+    "sicar",
+    "prodes",
+    "deter",
+    "desmatamento",
+    "compliance",
+    "rural",
+    "geoespacial"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+
+# ============================================================================
+# DEPENDÊNCIAS DO PROJETO
+# ============================================================================
+
+dependencies = [
+    # Framework Web
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    
+    # Validação e Configuração
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    
+    # Banco de Dados
+    "sqlalchemy[asyncio]>=2.0.25",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    "geoalchemy2>=0.14.3",
+    "psycopg2-binary>=2.9.9",
+    
+    # Processamento Assíncrono
+    "celery>=5.3.6",
+    "redis>=5.0.1",
+    
+    # Processamento de Imagens
+    "Pillow>=10.2.0",
+    
+    # Armazenamento S3
+    "boto3>=1.34.34",
+    
+    # Operações Espaciais
+    "shapely>=2.0.2",
+    
+    # APIs Externas
+    "anthropic>=0.8.1",
+    "httpx>=0.26.0",
+    
+    # Utilitários
+    "python-dotenv>=1.0.0",
+]
+
+# ============================================================================
+# DEPENDÊNCIAS OPCIONAIS (GRUPOS)
+# ============================================================================
+
+[project.optional-dependencies]
+# Dependências para desenvolvimento
+dev = [
+    "pytest==7.4.4",
+    "pytest-asyncio==0.23.3",
+    "pytest-cov==4.1.0",
+    "hypothesis==6.92.2",
+    "black==24.1.1",
+    "ruff==0.1.14",
+    "mypy==1.8.0",
+]
+
+# Dependências para testes
+test = [
+    "pytest==7.4.4",
+    "pytest-asyncio==0.23.3",
+    "pytest-cov==4.1.0",
+    "hypothesis==6.92.2",
+]
+
+# Dependências para ETL de dados geoespaciais
+etl = [
+    "geopandas==0.14.2",
+    "fiona==1.9.5",
+]
+
+# ============================================================================
+# CONFIGURAÇÃO DE FERRAMENTAS
+# ============================================================================
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+# Configuração do pytest
+testpaths = ["app"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "slow: marca testes que são lentos para executar",
+    "integration: marca testes de integração",
+    "unit: marca testes unitários",
+    "property: marca testes baseados em propriedades",
+]
+
+[tool.coverage.run]
+# Configuração de cobertura de código
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+]
+
+[tool.coverage.report]
+# Relatório de cobertura
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.black]
+# Configuração do Black (formatador de código)
+line-length = 100
+target-version = ["py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # Diretórios padrão a excluir
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+[tool.ruff]
+# Configuração do Ruff (linter)
+line-length = 100
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (gerenciado pelo black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "migrations",
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # Permite imports não usados em __init__.py
+
+[tool.mypy]
+# Configuração do MyPy (verificador de tipos)
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "geoalchemy2.*",
+    "shapely.*",
+    "celery.*",
+    "anthropic.*",
+]
+ignore_missing_imports = true

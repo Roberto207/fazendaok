@@ -1,0 +1,89 @@
+version: '3.8'
+
+# ============================================================================
+# DOCKER COMPOSE - PLATAFORMA FAZENDAOK
+# ============================================================================
+# Este arquivo orquestra todos os serviços necessários para rodar a plataforma:
+# - API (FastAPI)
+# - Worker (Celery)
+# - Banco de Dados (PostGIS)
+# - Cache/Broker (Redis)
+# ============================================================================
+
+services:
+  # Banco de Dados PostgreSQL com extensão PostGIS
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: fazendaok_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fazendaok}
+      POSTGRES_DB: ${DB_NAME:-fazendaok}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para Cache de Diagnósticos e Message Broker do Celery
+  redis:
+    image: redis:7-alpine
+    container_name: fazendaok_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Backend (FastAPI)
+  api:
+    build: .
+    container_name: fazendaok_api
+    restart: always
+    # O comando --reload permite o desenvolvimento ativo com hot-reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Se DATABASE_URL não estiver no .env, usa o banco local do container
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:fazendaok@db:5432/fazendaok}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker Celery para processamento assíncrono de diagnósticos
+  worker:
+    build: .
+    container_name: fazendaok_worker
+    restart: always
+    command: celery -A app.celery_app worker --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:fazendaok@db:5432/fazendaok}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

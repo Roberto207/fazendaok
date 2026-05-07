@@ -1,2 +1,6 @@
 .env
 venv
+.hypothesis
+.kiro
+.pytest_cache
+backend/alembic/env.py

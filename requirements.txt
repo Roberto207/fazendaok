@@ -1,0 +1,119 @@
+# ============================================================================
+# FAZENDAOK PLATFORM - DEPENDÊNCIAS PYTHON
+# ============================================================================
+#
+# Este arquivo contém todas as dependências necessárias para executar
+# a Plataforma FazendaOk backend.
+#
+# Instalação: pip install -r requirements.txt
+#
+# Requisitos atendidos: Task 1 - Backend project structure and core configuration
+# ============================================================================
+
+# ============================================================================
+# FRAMEWORK WEB
+# ============================================================================
+# FastAPI - Framework web assíncrono moderno para construção de APIs
+fastapi==0.109.0
+
+# Uvicorn - Servidor ASGI para executar aplicações FastAPI
+# [standard] inclui dependências extras para melhor performance
+uvicorn[standard]==0.27.0
+
+# ============================================================================
+# VALIDAÇÃO E CONFIGURAÇÃO
+# ============================================================================
+# Pydantic - Validação de dados e serialização
+pydantic==2.5.3
+
+# Pydantic Settings - Gerenciamento de configurações via variáveis de ambiente
+pydantic-settings==2.1.0
+
+# ============================================================================
+# BANCO DE DADOS
+# ============================================================================
+# SQLAlchemy - ORM para Python com suporte assíncrono
+# [asyncio] inclui suporte para operações assíncronas
+sqlalchemy[asyncio]==2.0.25
+
+# AsyncPG - Driver PostgreSQL assíncrono de alta performance
+asyncpg==0.29.0
+
+# Alembic - Ferramenta de migração de banco de dados
+alembic==1.13.1
+
+# GeoAlchemy2 - Extensão do SQLAlchemy para tipos geoespaciais (PostGIS)
+geoalchemy2==0.14.3
+
+# Psycopg2 - Driver PostgreSQL (necessário para algumas operações do GeoAlchemy2)
+psycopg2-binary==2.9.9
+
+# ============================================================================
+# PROCESSAMENTO ASSÍNCRONO
+# ============================================================================
+# Celery - Framework para processamento de tarefas assíncronas
+celery==5.3.6
+
+# Redis - Cliente Python para Redis (usado como broker do Celery e cache)
+redis==5.0.1
+
+# ============================================================================
+# PROCESSAMENTO DE IMAGENS
+# ============================================================================
+# Pillow - Biblioteca para processamento de imagens
+# Usado para extrair EXIF de fotos e gerar thumbnails
+Pillow==10.2.0
+
+# ============================================================================
+# ARMAZENAMENTO S3
+# ============================================================================
+# Boto3 - SDK da AWS para Python
+# Usado para upload de fotos para S3 (ou serviços compatíveis)
+boto3==1.34.34
+
+# ============================================================================
+# OPERAÇÕES ESPACIAIS
+# ============================================================================
+# Shapely - Manipulação e análise de objetos geométricos
+shapely==2.0.2
+
+# Geopandas - Manipulação de dados geoespaciais em DataFrames
+geopandas==0.14.2
+
+# Pyogrio - Engine de alta performance para leitura de arquivos vetoriais
+pyogrio==0.7.2
+
+# ============================================================================
+# APIS EXTERNAS
+# ============================================================================
+# Anthropic - SDK oficial da Anthropic para acesso ao Claude AI
+# Usado para gerar explicações em linguagem natural
+anthropic==0.8.1
+
+# HTTPX - Cliente HTTP assíncrono moderno
+# Usado para fazer requisições à API da Infosimples (SICAR)
+httpx==0.26.0
+
+# ============================================================================
+# UTILITÁRIOS
+# ============================================================================
+# fpdf2 - Geração de documentos PDF
+fpdf2==2.7.7
+
+# Python-dotenv - Carrega variáveis de ambiente de arquivos .env
+python-dotenv==1.0.0
+
+# ============================================================================
+# TESTES
+# ============================================================================
+# Pytest - Framework de testes para Python
+pytest==7.4.4
+
+# Pytest-asyncio - Plugin do pytest para testar código assíncrono
+pytest-asyncio==0.23.3
+
+# Pytest-cov - Plugin do pytest para cobertura de código
+pytest-cov==4.1.0
+
+# Hypothesis - Framework para testes baseados em propriedades (property-based testing)
+hypothesis==6.92.2

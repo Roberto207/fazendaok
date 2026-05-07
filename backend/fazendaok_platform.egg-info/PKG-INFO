@@ -1,0 +1,342 @@
+Metadata-Version: 2.4
+Name: fazendaok-platform
+Version: 0.1.0
+Summary: Plataforma de diagnóstico de conformidade socioambiental para propriedades rurais brasileiras
+Author: FazendaOk Team
+License: MIT
+Keywords: fazenda,car,sicar,prodes,deter,desmatamento,compliance,rural,geoespacial
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Framework :: FastAPI
+Classifier: Topic :: Scientific/Engineering :: GIS
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.109.0
+Requires-Dist: uvicorn[standard]>=0.27.0
+Requires-Dist: pydantic>=2.5.3
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: sqlalchemy[asyncio]>=2.0.25
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: alembic>=1.13.1
+Requires-Dist: geoalchemy2>=0.14.3
+Requires-Dist: psycopg2-binary>=2.9.9
+Requires-Dist: celery>=5.3.6
+Requires-Dist: redis>=5.0.1
+Requires-Dist: Pillow>=10.2.0
+Requires-Dist: boto3>=1.34.34
+Requires-Dist: shapely>=2.0.2
+Requires-Dist: anthropic>=0.8.1
+Requires-Dist: httpx>=0.26.0
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest==7.4.4; extra == "dev"
+Requires-Dist: pytest-asyncio==0.23.3; extra == "dev"
+Requires-Dist: pytest-cov==4.1.0; extra == "dev"
+Requires-Dist: hypothesis==6.92.2; extra == "dev"
+Requires-Dist: black==24.1.1; extra == "dev"
+Requires-Dist: ruff==0.1.14; extra == "dev"
+Requires-Dist: mypy==1.8.0; extra == "dev"
+Provides-Extra: test
+Requires-Dist: pytest==7.4.4; extra == "test"
+Requires-Dist: pytest-asyncio==0.23.3; extra == "test"
+Requires-Dist: pytest-cov==4.1.0; extra == "test"
+Requires-Dist: hypothesis==6.92.2; extra == "test"
+Provides-Extra: etl
+Requires-Dist: geopandas==0.14.2; extra == "etl"
+Requires-Dist: fiona==1.9.5; extra == "etl"
+
+# FazendaOk Platform - Backend
+
+## Visão Geral
+
+Backend da Plataforma FazendaOk construído com FastAPI, PostgreSQL + PostGIS, Redis e Celery.
+
+A plataforma permite verificar a conformidade socioambiental de propriedades rurais brasileiras cruzando dados do CAR (Cadastro Ambiental Rural) com bases de desmatamento (PRODES e DETER do INPE).
+
+## Estrutura do Projeto
+
+```
+backend/
+├── app/                     # Código da aplicação
+│   ├── __init__.py          # Inicialização do pacote
+│   ├── main.py              # Aplicação FastAPI principal
+│   ├── config.py            # Configurações (variáveis de ambiente)
+│   ├── database.py          # Configuração do banco de dados (a implementar)
+│   ├── celery_app.py        # Configuração do Celery (a implementar)
+│   ├── api/                 # Endpoints da API REST (a implementar)
+│   ├── models/              # Modelos SQLAlchemy (a implementar)
+│   ├── schemas/             # Schemas Pydantic (a implementar)
+│   ├── services/            # Lógica de negócio (a implementar)
+│   └── tasks/               # Tarefas assíncronas Celery (a implementar)
+├── alembic/                 # Migrações de banco de dados
+│   ├── env.py               # Configuração do Alembic
+│   ├── script.py.mako       # Template para migrações
+│   └── versions/            # Scripts de migração
+├── pyproject.toml           # Configuração do projeto e dependências
+├── .env.example             # Exemplo de variáveis de ambiente
+└── README.md                # Este arquivo
+```
+
+## Tecnologias Utilizadas
+
+- **FastAPI**: Framework web assíncrono moderno para construção de APIs
+- **PostgreSQL + PostGIS**: Banco de dados com suporte geoespacial
+- **SQLAlchemy**: ORM com suporte assíncrono
+- **Alembic**: Gerenciamento de migrações de banco de dados
+- **Celery**: Processamento assíncrono de tarefas
+- **Redis**: Cache e message broker
+- **Pydantic**: Validação de dados e configurações
+- **Boto3**: Upload de fotos para S3
+- **Pillow**: Processamento de imagens e extração de EXIF
+- **Anthropic SDK**: Integração com Claude AI
+- **HTTPX**: Cliente HTTP assíncrono
+
+## Instalação e Configuração
+
+### 1. Pré-requisitos
+
+- Python 3.11 ou superior
+- PostgreSQL 15+ com extensão PostGIS
+- Redis 7+
+- Conta na Infosimples (para acesso ao SICAR)
+- Chave de API da Anthropic (Claude AI)
+- Chave de API do Google Maps
+- Bucket S3 ou serviço compatível (MinIO, etc.)
+
+### 2. Instalação de Dependências
+
+```bash
+# Navegar para o diretório backend
+cd backend
+
+# Criar ambiente virtual
+python3 -m venv venv
+
+# Ativar ambiente virtual
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate  # Windows
+
+# Instalar dependências
+pip install -e .
+
+# Ou instalar com dependências de desenvolvimento
+pip install -e ".[dev]"
+```
+
+### 3. Configuração de Variáveis de Ambiente
+
+```bash
+# Copiar arquivo de exemplo
+cp .env.example .env
+
+# Editar .env com seus valores reais
+nano .env  # ou use seu editor preferido
+```
+
+**Variáveis obrigatórias:**
+- `DATABASE_URL`: URL de conexão com PostgreSQL
+- `REDIS_URL`: URL de conexão com Redis
+- `INFOSIMPLES_TOKEN`: Token da API Infosimples (acesso ao SICAR)
+- `ANTHROPIC_API_KEY`: Chave da API Anthropic (Claude AI)
+- `GOOGLE_MAPS_API_KEY`: Chave da API Google Maps
+- `AWS_BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: Credenciais S3
+
+**Variáveis opcionais:**
+- `MAX_FOTO_SIZE_MB`: Tamanho máximo de foto (padrão: 10 MB)
+- `MAX_FOTOS_POR_UPLOAD`: Máximo de fotos por upload (padrão: 20)
+- `LOG_LEVEL`: Nível de log (padrão: INFO)
+- `RATE_LIMIT_PER_HOUR`: Limite de requisições por hora (padrão: 100)
+
+### 4. Configuração do Banco de Dados
+
+```bash
+# Criar banco de dados PostgreSQL
+createdb fazendaok
+
+# Habilitar extensão PostGIS
+psql fazendaok -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+
+# Executar migrações (quando disponíveis)
+alembic upgrade head
+```
+
+### 5. Executar a Aplicação
+
+```bash
+# Ativar ambiente virtual
+source venv/bin/activate
+
+# Executar servidor de desenvolvimento
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+A API estará disponível em: http://localhost:8000
+
+### 6. Executar Worker Celery
+
+Em outro terminal:
+
+```bash
+# Ativar ambiente virtual
+source venv/bin/activate
+
+# Executar worker Celery (quando implementado)
+celery -A app.celery_app worker --loglevel=info
+```
+
+## Documentação da API
+
+Após iniciar o servidor, acesse:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
+
+## Endpoints Disponíveis
+
+### Sistema
+- `GET /` - Informações sobre a API
+- `GET /saude` - Health check
+- `GET /info` - Informações de configuração
+
+### Propriedades (a implementar)
+- `POST /api/v1/properties/search/car` - Buscar propriedade por número CAR
+- `POST /api/v1/properties/search/coordinates` - Buscar propriedade por coordenadas
+- `GET /api/v1/properties/{property_id}` - Obter detalhes de uma propriedade
+
+### Diagnósticos (a implementar)
+- `POST /api/v1/diagnostics/generate/{property_id}` - Gerar diagnóstico
+- `GET /api/v1/diagnostics/{diagnostic_id}` - Obter diagnóstico
+- `GET /api/v1/diagnostics/history/{car_number}` - Histórico de diagnósticos
+
+### Fotos (a implementar)
+- `POST /api/v1/photos/upload/{property_id}` - Upload de fotos
+- `GET /api/v1/photos/{property_id}` - Listar fotos de uma propriedade
+
+### Dashboard (a implementar)
+- `GET /api/v1/dashboard/overview` - Visão geral do sistema
+
+## Testes
+
+```bash
+# Executar todos os testes
+pytest
+
+# Executar com cobertura
+pytest --cov=app --cov-report=html
+
+# Executar testes específicos
+pytest app/services/test_photo_service.py
+
+# Executar apenas testes unitários
+pytest -m unit
+
+# Executar apenas testes de integração
+pytest -m integration
+
+# Executar apenas testes baseados em propriedades
+pytest -m property
+```
+
+## Desenvolvimento
+
+### Formatação de Código
+
+```bash
+# Formatar código com Black
+black app/
+
+# Verificar formatação
+black --check app/
+```
+
+### Linting
+
+```bash
+# Executar Ruff
+ruff check app/
+
+# Corrigir problemas automaticamente
+ruff check --fix app/
+```
+
+### Verificação de Tipos
+
+```bash
+# Executar MyPy
+mypy app/
+```
+
+## Migrações de Banco de Dados
+
+```bash
+# Criar nova migração (autogenerate)
+alembic revision --autogenerate -m "Descrição da migração"
+
+# Criar migração vazia
+alembic revision -m "Descrição da migração"
+
+# Aplicar migrações
+alembic upgrade head
+
+# Reverter última migração
+alembic downgrade -1
+
+# Ver histórico
+alembic history
+
+# Ver migração atual
+alembic current
+```
+
+## Requisitos Atendidos
+
+Esta implementação atende aos seguintes requisitos da especificação:
+
+### Task 1 - Backend project structure and core configuration
+- ✅ Criação do diretório `/backend` com estrutura FastAPI
+- ✅ Configuração de `pyproject.toml` com todas as dependências
+- ✅ Criação de `app/__init__.py`, `app/main.py`, `app/config.py`
+- ✅ Implementação de carregamento de configuração via pydantic-settings
+- ✅ Criação de `.env.example` com todas as variáveis necessárias
+
+### Requisitos de Configuração (16.1 - 16.10)
+- ✅ **16.1**: Carregamento de configuração via variáveis de ambiente
+- ✅ **16.2**: Configuração do DATABASE_URL
+- ✅ **16.3**: Configuração do REDIS_URL
+- ✅ **16.4**: Configuração do INFOSIMPLES_TOKEN
+- ✅ **16.5**: Configuração do ANTHROPIC_API_KEY
+- ✅ **16.6**: Configuração do GOOGLE_MAPS_API_KEY
+- ✅ **16.7**: Configuração de credenciais S3 (AWS_BUCKET_NAME, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINT_URL)
+- ✅ **16.8**: Configuração de caminhos dos shapefiles (PRODES_SHAPEFILE_PATH, DETER_SHAPEFILE_PATH)
+- ✅ **16.9**: Configuração de limites de upload (MAX_FOTO_SIZE_MB, MAX_FOTOS_POR_UPLOAD)
+- ✅ **16.10**: Validação de variáveis obrigatórias na inicialização
+
+## Próximos Passos
+
+1. ✅ **Task 1**: Estrutura do projeto e configuração core (COMPLETO)
+2. ⏳ **Task 2**: Configuração do banco de dados com PostgreSQL e PostGIS
+3. ⏳ **Task 3**: Scripts ETL para PRODES e DETER
+4. ⏳ **Task 4**: Configuração do Celery
+5. ⏳ **Task 5**: Checkpoint - Verificar infraestrutura
+6. ⏳ **Task 6**: Implementar serviço de integração com SICAR
+7. ⏳ **Task 7**: Implementar serviço de análise espacial
+8. ⏳ **Task 8**: Implementar lógica de classificação de risco
+9. ⏳ **Task 9**: Implementar serviço Claude AI
+10. ⏳ **Task 10**: Implementar serviço de cache
+
+## Suporte
+
+Para dúvidas ou problemas:
+- Consulte a documentação completa em `.kiro/specs/fazenda-ok-platform/`
+- Verifique os logs da aplicação
+- Consulte a documentação da API em `/docs`
+
+## Licença
+
+MIT
